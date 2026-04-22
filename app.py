@@ -186,9 +186,18 @@ all_mat AS (
     FROM ctbuh_building b
     WHERE b.status = 'COM' AND b.structure_type = 'building' AND b.deleted_at IS NULL
       AND b.height_architecture > 0 AND b.structural_material <> ''
+),
+
+-- ── 6. ALL global COM buildings for overall height ranking ────────────────────
+-- No function or material filter — every completed building qualifies.
+all_overall AS (
+    SELECT b.id, b.city_id, b.country_id, b.region_id, b.height_architecture
+    FROM ctbuh_building b
+    WHERE b.status = 'COM' AND b.structure_type = 'building' AND b.deleted_at IS NULL
+      AND b.height_architecture > 0
 )
 
--- ── FINAL: combine all eight title buckets ────────────────────────────────────
+-- ── FINAL: combine all twelve title buckets ───────────────────────────────────
 SELECT
     results.title,
     results.title_type,
@@ -387,6 +396,88 @@ FROM (
         FROM all_mat
     ) cr ON cm.id = cr.id AND cm.mat = cr.mat
     WHERE cr.rnk <= 5
+
+    UNION ALL
+    -- ── Overall × City ────────────────────────────────────────────────────────
+    SELECT
+        CONCAT(
+            CASE cr.rnk WHEN 1 THEN 'Tallest' WHEN 2 THEN 'Second-Tallest'
+                        WHEN 3 THEN 'Third-Tallest' WHEN 4 THEN 'Fourth-Tallest'
+                        WHEN 5 THEN 'Fifth-Tallest' END,
+            ' Building in ', c.city_name
+        ) AS title,
+        'Overall' AS title_type, 'overall' AS category,
+        'City' AS geography_level, c.city_name AS geography,
+        c.id AS building_id, c.name_intl AS building_name,
+        c.city_name, c.country_name,
+        c.height_architecture, c.completed, cr.rnk AS rank_in_category
+    FROM candidates c
+    JOIN (
+        SELECT id, city_id,
+               ROW_NUMBER() OVER (PARTITION BY city_id ORDER BY height_architecture DESC) AS rnk
+        FROM all_overall
+    ) cr ON c.id = cr.id AND c.city_id = cr.city_id
+    WHERE cr.rnk <= 5
+
+    UNION ALL
+    -- ── Overall × Country ─────────────────────────────────────────────────────
+    SELECT
+        CONCAT(
+            CASE cr.rnk WHEN 1 THEN 'Tallest' WHEN 2 THEN 'Second-Tallest'
+                        WHEN 3 THEN 'Third-Tallest' WHEN 4 THEN 'Fourth-Tallest'
+                        WHEN 5 THEN 'Fifth-Tallest' END,
+            ' Building in ', c.country_name
+        ),
+        'Overall', 'overall', 'Country', c.country_name,
+        c.id, c.name_intl, c.city_name, c.country_name,
+        c.height_architecture, c.completed, cr.rnk
+    FROM candidates c
+    JOIN (
+        SELECT id, country_id,
+               ROW_NUMBER() OVER (PARTITION BY country_id ORDER BY height_architecture DESC) AS rnk
+        FROM all_overall
+    ) cr ON c.id = cr.id AND c.country_id = cr.country_id
+    WHERE cr.rnk <= 5
+
+    UNION ALL
+    -- ── Overall × Region ──────────────────────────────────────────────────────
+    SELECT
+        CONCAT(
+            CASE cr.rnk WHEN 1 THEN 'Tallest' WHEN 2 THEN 'Second-Tallest'
+                        WHEN 3 THEN 'Third-Tallest' WHEN 4 THEN 'Fourth-Tallest'
+                        WHEN 5 THEN 'Fifth-Tallest' END,
+            ' Building in ', c.region_name
+        ),
+        'Overall', 'overall', 'Region', c.region_name,
+        c.id, c.name_intl, c.city_name, c.country_name,
+        c.height_architecture, c.completed, cr.rnk
+    FROM candidates c
+    JOIN (
+        SELECT id, region_id,
+               ROW_NUMBER() OVER (PARTITION BY region_id ORDER BY height_architecture DESC) AS rnk
+        FROM all_overall
+    ) cr ON c.id = cr.id AND c.region_id = cr.region_id
+    WHERE cr.rnk <= 5
+
+    UNION ALL
+    -- ── Overall × World ───────────────────────────────────────────────────────
+    SELECT
+        CONCAT(
+            CASE cr.rnk WHEN 1 THEN 'Tallest' WHEN 2 THEN 'Second-Tallest'
+                        WHEN 3 THEN 'Third-Tallest' WHEN 4 THEN 'Fourth-Tallest'
+                        WHEN 5 THEN 'Fifth-Tallest' END,
+            ' Building in the World'
+        ),
+        'Overall', 'overall', 'World', 'World',
+        c.id, c.name_intl, c.city_name, c.country_name,
+        c.height_architecture, c.completed, cr.rnk
+    FROM candidates c
+    JOIN (
+        SELECT id,
+               ROW_NUMBER() OVER (ORDER BY height_architecture DESC) AS rnk
+        FROM all_overall
+    ) cr ON c.id = cr.id
+    WHERE cr.rnk <= 5
 ) results
 ORDER BY results.building_name, results.title_type, results.geography_level, results.rank_in_category
 """
@@ -394,7 +485,7 @@ ORDER BY results.building_name, results.title_type, results.geography_level, res
 
 # Bump this version string any time the SQL schema changes so Streamlit
 # immediately invalidates the old cached result on the next page load.
-_TITLES_VERSION = "v2-city-country"
+_TITLES_VERSION = "v3-overall-titles"
 
 
 @st.cache_data(ttl=3600, show_spinner="Loading titles from database — this takes a moment…")
