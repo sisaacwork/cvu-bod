@@ -828,7 +828,7 @@ def main():
 
         all_types = sorted(df_all["title_type"].dropna().unique().tolist())
         title_types = st.multiselect(
-            "Title Type (Function / Material)",
+            "Title Type (Function / Material / Overall)",
             options=all_types,
             default=all_types,
             help="Filter by how the title is categorised — by building function or structural material.",
@@ -836,7 +836,7 @@ def main():
 
         all_cats = sorted(df_all["category"].dropna().unique().tolist())
         categories = st.multiselect(
-            "Category",
+            "Function / Material Category",
             options=all_cats,
             default=[],
             placeholder="All categories",
@@ -853,7 +853,7 @@ def main():
 
         # Geography search — text box for quick free-text lookup
         geo_search = st.text_input(
-            "Search geography",
+            "Geography search",
             placeholder="e.g. Seoul, United States, Asia",
             help="Partial match against region, country, or city name.",
         )
@@ -871,7 +871,7 @@ def main():
             geo_pool = [g for g in geo_pool if q in g.lower()]
 
         geographies = st.multiselect(
-            "Specific geographies",
+            "Geographies multi-select",
             options=geo_pool,
             default=[],
             placeholder="All — or pick one / several",
@@ -882,13 +882,13 @@ def main():
 
         min_height = st.slider(
             "Min. height (m)",
-            min_value=0, max_value=800, value=0, step=25,
+            min_value=0, max_value=800, value=200, step=25,
             help="Only show buildings at or above this height.",
         )
 
         max_rank = st.slider(
             "Show titles up to rank…",
-            min_value=1, max_value=5, value=5, step=1,
+            min_value=1, max_value=5, value=1, step=1,
             help="1 = Tallest only.  5 = show up to Fifth-Tallest.",
             format="Top %d",
         )
