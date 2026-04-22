@@ -15,6 +15,20 @@ import pandas as pd
 import mysql.connector
 
 # ─────────────────────────────────────────────────────────────────────────────
+# AWARDED BUILDINGS — excluded from display, kept in ranking pools
+# ─────────────────────────────────────────────────────────────────────────────
+# Buildings that have already received a Building of Distinction award.
+# They still count toward rank calculations (so other buildings' ordinals are
+# correct), but are hidden from the candidate list shown to users.
+# Add new IDs here as awards are made.
+AWARDED_BUILDING_IDS: set[int] = {
+    34561, 39449,  3334, 41146, 45568, 16125, 16126, 10115, 34420, 16120,
+    22997, 34292,   148, 33155, 36350, 34302,   310, 15639, 36474,   189,
+    26866,    54, 13245,   196, 15741, 15166,    56,   247,  5559,  1677,
+    27941, 27942, 10190, 15217,  1789,  1790, 28373, 28374,     3,
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # PAGE SETUP
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -812,6 +826,11 @@ def main():
 
     # ── Load data ─────────────────────────────────────────────────────────────
     df_all = load_titles(_version=_TITLES_VERSION)
+
+    # Strip awarded buildings from the visible candidate pool.
+    # Rankings are unaffected — these IDs are still present in the SQL
+    # ranking pools (all_func / all_mat / all_overall).
+    df_all = df_all[~df_all["building_id"].isin(AWARDED_BUILDING_IDS)]
 
     if df_all.empty:
         st.error("No data returned from the database. Check your .streamlit/secrets.toml credentials.")
